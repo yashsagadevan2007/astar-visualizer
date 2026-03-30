@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>A* Pathfinding — The Algorithm Behind Every GPS</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#070b14;--bg2:#0d1424;--bg3:#111a2e;
+  --accent:#00e5ff;--accent2:#7c3aed;--accent3:#10b981;
+  --warn:#f59e0b;--danger:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;
+  --border:rgba(0,229,255,0.15);
+  --glow:0 0 20px rgba(0,229,255,0.3);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 40px;background:rgba(7,11,20,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);}
+.nav-logo{font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--accent);letter-spacing:2px;text-shadow:var(--glow);}
+.nav-links{display:flex;gap:28px;}
+.nav-links a{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color 0.2s;}
+.nav-links a:hover{color:var(--accent);}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 20px 60px;position:relative;overflow:hidden;}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.04) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);}
+.hero-tag{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:20px;opacity:0;animation:fadeUp 0.6s 0.2s forwards;}
+.hero h1{font-family:'Rajdhani',sans-serif;font-size:clamp(42px,8vw,88px);font-weight:700;line-height:1.05;margin-bottom:10px;opacity:0;animation:fadeUp 0.6s 0.4s forwards;}
+.hero h1 .hl{color:var(--accent);text-shadow:0 0 40px rgba(0,229,255,0.5);}
+.hero-sub{font-size:clamp(15px,2.5vw,18px);color:var(--muted);margin-bottom:14px;max-width:560px;opacity:0;animation:fadeUp 0.6s 0.6s forwards;}
+.formula-badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:22px;color:var(--accent);background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:10px 28px;margin-bottom:36px;text-shadow:var(--glow);opacity:0;animation:fadeUp 0.6s 0.8s forwards;}
+.hero-btn{display:inline-block;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#070b14;background:var(--accent);border:none;border-radius:4px;padding:14px 40px;cursor:pointer;text-decoration:none;box-shadow:0 0 30px rgba(0,229,255,0.4);transition:all 0.2s;opacity:0;animation:fadeUp 0.6s 1s forwards;}
+.hero-btn:hover{background:#fff;box-shadow:0 0 50px rgba(0,229,255,0.6);transform:translateY(-2px);}
+
+section{padding:80px 20px;max-width:1100px;margin:0 auto;}
+.sec-tag{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+.sec-title{font-family:'Rajdhani',sans-serif;font-size:clamp(28px,5vw,48px);font-weight:700;margin-bottom:10px;line-height:1.1;}
+.sec-desc{color:var(--muted);font-size:15px;margin-bottom:40px;max-width:600px;line-height:1.7;}
+.sec-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+
+/* FORMULA */
+.formula-row{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;margin-bottom:30px;}
+.f-part{flex:1;min-width:160px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:18px;text-align:center;}
+.f-var{font-family:'Share Tech Mono',monospace;font-size:28px;margin-bottom:6px;}
+.f-var.fn{color:var(--warn);} .f-var.gn{color:var(--accent3);} .f-var.hn{color:var(--accent2);}
+.f-eq{font-family:'Share Tech Mono',monospace;font-size:28px;color:var(--muted);display:flex;align-items:center;justify-content:center;padding:18px 4px;}
+.f-label{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:15px;margin-bottom:4px;}
+.f-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+
+/* HOW CARDS */
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:40px;}
+.how-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:22px 18px;position:relative;overflow:hidden;}
+.how-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.how-card.cg::before{background:var(--accent3);} .how-card.cb::before{background:var(--accent);}
+.how-card.cp::before{background:var(--accent2);} .how-card.cy::before{background:var(--warn);}
+.how-card-num{font-family:'Share Tech Mono',monospace;font-size:26px;margin-bottom:10px;}
+.how-card.cg .how-card-num{color:var(--accent3);} .how-card.cb .how-card-num{color:var(--accent);}
+.how-card.cp .how-card-num{color:var(--accent2);} .how-card.cy .how-card-num{color:var(--warn);}
+.how-card h3{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:600;margin-bottom:6px;}
+.how-card p{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* VISUALIZER */
+.viz-controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;}
+.v-btn{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:7px 16px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;transition:all 0.15s;}
+.v-btn:hover{border-color:var(--accent);color:var(--accent);}
+.v-btn.run{background:var(--accent);color:#070b14;border-color:var(--accent);box-shadow:0 0 20px rgba(0,229,255,0.3);}
+.v-btn.run:hover{background:#fff;}
+.v-btn.run:disabled{opacity:0.4;cursor:not-allowed;}
+.speed-wrap{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-family:'Share Tech Mono',monospace;}
+input[type=range]{accent-color:var(--accent);width:80px;}
+canvas#mainCanvas{display:block;border-radius:6px;border:1px solid var(--border);cursor:crosshair;max-width:100%;box-shadow:0 0 40px rgba(0,229,255,0.05);}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-family:'Share Tech Mono',monospace;}
+.sw{width:12px;height:12px;border-radius:2px;}
+
+.viz-layout{display:grid;grid-template-columns:1fr 250px;gap:20px;align-items:start;}
+@media(max-width:800px){.viz-layout{grid-template-columns:1fr;}}
+
+.side-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:18px;font-family:'Share Tech Mono',monospace;}
+.panel-title{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;}
+.score-row{display:flex;justify-content:space-between;margin-bottom:12px;}
+.score-col{text-align:center;}
+.score-label{font-size:11px;color:var(--muted);margin-bottom:2px;}
+.score-val{font-size:24px;}
+.score-val.fn{color:var(--warn);} .score-val.gn{color:var(--accent3);} .score-val.hn{color:var(--accent2);}
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0;}
+.stat-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;}
+.stat-row .sl{color:var(--muted);} .stat-row .sv{color:var(--text);}
+.step-log{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.8;min-height:60px;border-top:1px solid var(--border);padding-top:10px;}
+.step-log .hl{color:var(--accent);}
+
+/* COMPARE */
+.compare-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;}
+@media(max-width:700px){.compare-wrap{grid-template-columns:1fr;}}
+.compare-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;}
+.compare-card.ca{border-color:rgba(0,229,255,0.3);}
+.compare-card.cb{border-color:rgba(124,58,237,0.3);}
+.compare-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;}
+.compare-card.ca .compare-title{color:var(--accent);}
+.compare-card.cb .compare-title{color:var(--accent2);}
+canvas.cmp-canvas{display:block;width:100%;border-radius:4px;border:1px solid var(--border);margin:10px 0;cursor:default;}
+.cmp-stats{font-size:12px;color:var(--muted);font-family:'Share Tech Mono',monospace;}
+.cmp-stats span{color:var(--text);}
+.cmp-btn{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;margin-right:8px;margin-bottom:4px;transition:all 0.15s;}
+.cmp-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* APPS */
+.apps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+.app-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:24px 20px;transition:border-color 0.2s,transform 0.2s;}
+.app-card:hover{border-color:rgba(0,229,255,0.4);transform:translateY(-3px);}
+.app-icon{font-size:30px;margin-bottom:12px;}
+.app-card h3{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:600;margin-bottom:6px;}
+.app-card p{font-size:13px;color:var(--muted);line-height:1.6;}
+
+footer{text-align:center;padding:40px 20px;border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted);}
+footer .ac{color:var(--accent);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">A* SEARCH</div>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#viz">Visualize</a>
+    <a href="#compare">Compare</a>
+    <a href="#apps">Applications</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-tag">Artificial Intelligence — Search Algorithms</div>
+  <h1>The <span class="hl">A*</span> Algorithm</h1>
+  <p class="hero-sub">The smartest pathfinding algorithm ever invented. Powering GPS, games, and robots worldwide.</p>
+  <div class="formula-badge">f(n) = g(n) + h(n)</div>
+  <a href="#viz" class="hero-btn">Launch Visualizer</a>
+</div>
+
+<div class="sec-divider"></div>
+
+<section id="how">
+  <div class="sec-tag">// 01 — concept</div>
+  <div class="sec-title">How A* Works</div>
+  <p class="sec-desc">A* combines the real cost to reach a node with a smart estimate of how far the goal is — making it faster and smarter than any blind search.</p>
+
+  <div class="formula-row">
+    <div class="f-part"><div class="f-var fn">f(n)</div><div class="f-label">Total Score</div><div class="f-desc">Priority of a cell. A* always picks the cell with the lowest f(n) next.</div></div>
+    <div class="f-eq">=</div>
+    <div class="f-part"><div class="f-var gn">g(n)</div><div class="f-label">Real Cost</div><div class="f-desc">Exact steps taken from the start to reach this cell.</div></div>
+    <div class="f-eq">+</div>
+    <div class="f-part"><div class="f-var hn">h(n)</div><div class="f-label">Heuristic</div><div class="f-desc">Estimated distance to the goal using Manhattan distance: |Δrow| + |Δcol|.</div></div>
+  </div>
+
+  <div class="how-grid">
+    <div class="how-card cg"><div class="how-card-num">01</div><h3>Start node</h3><p>Add the start cell to the Open List with f = 0 + h(start).</p></div>
+    <div class="how-card cb"><div class="how-card-num">02</div><h3>Pick the best</h3><p>Always pick the cell with the lowest f(n) from the Open List.</p></div>
+    <div class="how-card cp"><div class="how-card-num">03</div><h3>Explore neighbors</h3><p>Calculate g, h, and f for each neighbor. Update if a better path is found.</p></div>
+    <div class="how-card cy"><div class="how-card-num">04</div><h3>Repeat until goal</h3><p>Move processed cells to Closed List. Stop when the goal is reached.</p></div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<section id="viz">
+  <div class="sec-tag">// 02 — interactive</div>
+  <div class="sec-title">Live Visualizer</div>
+  <p class="sec-desc">Click/drag to draw walls. Drag S or E to move start/end. Watch A* animate in real time with live f, g, h scores.</p>
+
+  <div class="viz-controls">
+    <button class="v-btn run" id="runBtn">▶ Visualize A*</button>
+    <button class="v-btn" id="clearPathBtn">Clear Path</button>
+    <button class="v-btn" id="clearAllBtn">Clear All</button>
+    <button class="v-btn" id="mazeBtn">Random Maze</button>
+    <div class="speed-wrap">
+      Speed <input type="range" id="speedSlider" min="1" max="10" value="5" step="1"/> <span id="speedLabel">5</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="leg"><div class="sw" style="background:#10b981"></div>Start</div>
+    <div class="leg"><div class="sw" style="background:#ef4444"></div>End</div>
+    <div class="leg"><div class="sw" style="background:#334155"></div>Wall</div>
+    <div class="leg"><div class="sw" style="background:#1e3a5f"></div>Open list</div>
+    <div class="leg"><div class="sw" style="background:#1a2a3e"></div>Closed list</div>
+    <div class="leg"><div class="sw" style="background:#f59e0b"></div>Path</div>
+  </div>
+
+  <div class="viz-layout">
+    <canvas id="mainCanvas"></canvas>
+    <div class="side-panel">
+      <div class="panel-title">Live Scores</div>
+      <div class="score-row">
+        <div class="score-col"><div class="score-label">f(n)</div><div class="score-val fn" id="pf">—</div></div>
+        <div class="score-col"><div class="score-label">g(n)</div><div class="score-val gn" id="pg">—</div></div>
+        <div class="score-col"><div class="score-label">h(n)</div><div class="score-val hn" id="ph">—</div></div>
+      </div>
+      <hr class="divider"/>
+      <div class="stat-row"><span class="sl">Visited cells</span><span class="sv" id="sVisited">—</span></div>
+      <div class="stat-row"><span class="sl">Path length</span><span class="sv" id="sPath">—</span></div>
+      <div class="stat-row"><span class="sl">Status</span><span class="sv" id="sStatus">Ready</span></div>
+      <div class="step-log" id="stepLog">Waiting to start...</div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<section id="compare">
+  <div class="sec-tag">// 03 — comparison</div>
+  <div class="sec-title">A* vs BFS</div>
+  <p class="sec-desc">Both guarantee the shortest path — but A* is guided by its heuristic and visits far fewer cells. Watch them race side by side.</p>
+
+  <div>
+    <button class="cmp-btn" id="runBothBtn">▶ Run Both</button>
+    <button class="cmp-btn" id="resetBothBtn">Reset</button>
+    <button class="cmp-btn" id="mazeBothBtn">Random Maze</button>
+  </div>
+
+  <div class="compare-wrap">
+    <div class="compare-card ca">
+      <div class="compare-title">A* Search</div>
+      <div class="cmp-stats">Visited: <span id="cmpAV">—</span> &nbsp; Path: <span id="cmpAP">—</span></div>
+      <canvas class="cmp-canvas" id="cmpA"></canvas>
+    </div>
+    <div class="compare-card cb">
+      <div class="compare-title">BFS</div>
+      <div class="cmp-stats">Visited: <span id="cmpBV">—</span> &nbsp; Path: <span id="cmpBP">—</span></div>
+      <canvas class="cmp-canvas" id="cmpB"></canvas>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<section id="apps">
+  <div class="sec-tag">// 04 — real world</div>
+  <div class="sec-title">Real World Applications</div>
+  <p class="sec-desc">A* is not just a textbook algorithm — it powers technology millions of people use every single day.</p>
+  <div class="apps-grid">
+    <div class="app-card"><div class="app-icon">🗺️</div><h3>GPS Navigation</h3><p>Google Maps and Waze use A* variants to compute the fastest routes between millions of locations in milliseconds.</p></div>
+    <div class="app-card"><div class="app-icon">🎮</div><h3>Video Games</h3><p>Game AI characters use A* to navigate complex maps, avoid obstacles, and chase or flee the player intelligently.</p></div>
+    <div class="app-card"><div class="app-icon">🤖</div><h3>Robotics</h3><p>Autonomous robots like warehouse bots and surgical robots use A* to plan collision-free paths in real time.</p></div>
+    <div class="app-card"><div class="app-icon">🧬</div><h3>Bioinformatics</h3><p>Used to align protein sequences and find optimal paths through molecular graphs in computational biology.</p></div>
+  </div>
+</section>
+
+<footer>
+  <div>Built with <span class="ac">A* Search Algorithm</span> — Artificial Intelligence Project</div>
+  <div style="margin-top:6px;opacity:0.5;">f(n) = g(n) + h(n)</div>
+</footer>
+
+<script>
+// ===== MAIN VISUALIZER =====
+const COLS=38,ROWS=20;
+let CELL=18;
+const mc=document.getElementById('mainCanvas');
+const mctx=mc.getContext('2d');
+const E=0,W=1,S=2,EN=3,OP=4,CL=5,PT=6;
+const CLR={[E]:'#0d1424',[W]:'#334155',[S]:'#10b981',[EN]:'#ef4444',[OP]:'#1e3a5f',[CL]:'#1a2a3e',[PT]:'#f59e0b'};
+let mg=[],ms={r:10,c:3},me={r:10,c:34};
+let mMD=false,mDM=W,mDrag=null,mRun=false;
+let mG={},mH={};
+
+function resizeMain(){
+  const w=mc.parentElement.clientWidth;
+  CELL=Math.max(14,Math.floor(w/COLS));
+  mc.width=COLS*CELL; mc.height=ROWS*CELL;
+  drawAll();
+}
+function initMain(){
+  mg=Array.from({length:ROWS},()=>Array(COLS).fill(E));
+  mg[ms.r][ms.c]=S; mg[me.r][me.c]=EN;
+}
+function dc(r,c){
+  const x=c*CELL,y=r*CELL,v=mg[r][c];
+  mctx.fillStyle=CLR[v]; mctx.fillRect(x,y,CELL,CELL);
+  mctx.strokeStyle='rgba(0,229,255,0.07)'; mctx.lineWidth=0.5; mctx.strokeRect(x,y,CELL,CELL);
+  if(v===S||v===EN){
+    mctx.fillStyle=v===S?'#064e3b':'#7f1d1d';
+    mctx.font=`bold ${Math.max(10,CELL-6)}px Rajdhani,sans-serif`;
+    mctx.textAlign='center'; mctx.textBaseline='middle';
+    mctx.fillText(v===S?'S':'E',x+CELL/2,y+CELL/2);
+  }
+  if((v===OP||v===CL)&&CELL>=18){
+    const g=mG[r]?.[c],h=mH[r]?.[c];
+    if(g!==undefined&&h!==undefined){
+      mctx.fillStyle='rgba(0,229,255,0.5)';
+      mctx.font=`${Math.max(7,CELL-10)}px Share Tech Mono,monospace`;
+      mctx.textAlign='center'; mctx.textBaseline='middle';
+      mctx.fillText(g+h,x+CELL/2,y+CELL/2);
+    }
+  }
+}
+function drawAll(){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)dc(r,c);}
+
+function getCell(e){
+  const rect=mc.getBoundingClientRect();
+  const sx=mc.width/rect.width,sy=mc.height/rect.height;
+  const x=(e.clientX-rect.left)*sx,y=(e.clientY-rect.top)*sy;
+  const c=Math.floor(x/CELL),r=Math.floor(y/CELL);
+  if(r<0||r>=ROWS||c<0||c>=COLS)return null;
+  return{r,c};
+}
+mc.addEventListener('mousedown',e=>{
+  e.preventDefault(); mMD=true;
+  const cell=getCell(e); if(!cell)return;
+  if(mg[cell.r][cell.c]===S){mDrag='s';return;}
+  if(mg[cell.r][cell.c]===EN){mDrag='e';return;}
+  mDM=e.button===2?E:W;
+  if(mg[cell.r][cell.c]!==S&&mg[cell.r][cell.c]!==EN){mg[cell.r][cell.c]=mDM;dc(cell.r,cell.c);}
+});
+mc.addEventListener('mousemove',e=>{
+  if(!mMD)return;
+  const cell=getCell(e); if(!cell)return;
+  if(mDrag){
+    const prev=mDrag==='s'?ms:me;
+    if(cell.r===prev.r&&cell.c===prev.c)return;
+    if(mg[cell.r][cell.c]===W||mg[cell.r][cell.c]===S||mg[cell.r][cell.c]===EN)return;
+    mg[prev.r][prev.c]=E; dc(prev.r,prev.c);
+    if(mDrag==='s')ms={r:cell.r,c:cell.c}; else me={r:cell.r,c:cell.c};
+    mg[cell.r][cell.c]=mDrag==='s'?S:EN; dc(cell.r,cell.c); return;
+  }
+  if(mg[cell.r][cell.c]!==S&&mg[cell.r][cell.c]!==EN){mg[cell.r][cell.c]=mDM;dc(cell.r,cell.c);}
+});
+mc.addEventListener('mouseup',()=>{mMD=false;mDrag=null;});
+mc.addEventListener('mouseleave',()=>{mMD=false;mDrag=null;});
+mc.addEventListener('contextmenu',e=>e.preventDefault());
+
+function clearPath(){
+  mG={}; mH={};
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
+    if(mg[r][c]===OP||mg[r][c]===CL||mg[r][c]===PT){mg[r][c]=E;dc(r,c);}
+  ['sVisited','sPath'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('sStatus').textContent='Ready';
+  document.getElementById('pf').textContent='—';
+  document.getElementById('pg').textContent='—';
+  document.getElementById('ph').textContent='—';
+  document.getElementById('stepLog').innerHTML='Waiting to start...';
+}
+
+function mheur(r,c){return Math.abs(r-me.r)+Math.abs(c-me.c);}
+function mnbrs(r,c){return[[0,1],[1,0],[0,-1],[-1,0]].map(([dr,dc])=>[r+dr,c+dc]).filter(([nr,nc])=>nr>=0&&nr<ROWS&&nc>=0&&nc<COLS);}
+function recon(prev,r,c){
+  const p=[];let cur=`${r},${c}`;
+  while(prev[cur]){const[pr,pc]=prev[cur].split(',').map(Number);p.unshift([pr,pc]);cur=prev[cur];}
+  return p;
+}
+
+async function runAstar(){
+  if(mRun)return; clearPath(); mRun=true;
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('sStatus').textContent='Running...';
+  const spd=parseInt(document.getElementById('speedSlider').value);
+  const delay=ms=>new Promise(res=>setTimeout(res,ms));
+  const bd=Math.round(110/spd);
+  const gS=Array.from({length:ROWS},()=>Array(COLS).fill(Infinity));
+  const prev={}; gS[ms.r][ms.c]=0;
+  const h0=mheur(ms.r,ms.c);
+  mG[ms.r]=mG[ms.r]||{}; mG[ms.r][ms.c]=0;
+  mH[ms.r]=mH[ms.r]||{}; mH[ms.r][ms.c]=h0;
+  const open=[[h0,ms.r,ms.c]];
+  const closed=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  let vc=0,found=false,er,ec;
+  while(open.length){
+    open.sort((a,b)=>a[0]-b[0]);
+    const[f,r,c]=open.shift();
+    if(closed[r][c])continue; closed[r][c]=true;
+    if(mg[r][c]===EN){found=true;er=r;ec=c;break;}
+    if(mg[r][c]!==S){mg[r][c]=CL;dc(r,c);vc++;}
+    document.getElementById('sVisited').textContent=vc;
+    document.getElementById('pf').textContent=f;
+    document.getElementById('pg').textContent=gS[r][c];
+    document.getElementById('ph').textContent=mheur(r,c);
+    document.getElementById('stepLog').innerHTML=`Processing <span class="hl">[${r},${c}]</span><br>f=${f} &nbsp;g=${gS[r][c]} &nbsp;h=${mheur(r,c)}`;
+    await delay(bd);
+    for(const[nr,nc]of mnbrs(r,c)){
+      if(mg[nr][nc]===W||closed[nr][nc])continue;
+      const ng=gS[r][c]+1;
+      if(ng<gS[nr][nc]){
+        gS[nr][nc]=ng; mG[nr]=mG[nr]||{}; mG[nr][nc]=ng;
+        const nh=mheur(nr,nc); mH[nr]=mH[nr]||{}; mH[nr][nc]=nh;
+        prev[`${nr},${nc}`]=`${r},${c}`;
+        if(mg[nr][nc]!==EN){mg[nr][nc]=OP;dc(nr,nc);}
+        open.push([ng+nh,nr,nc]);
+      }
+    }
+  }
+  if(found){
+    const path=recon(prev,er,ec);
+    for(const[pr,pc]of path){mg[pr][pc]=PT;dc(pr,pc);await delay(40);}
+    document.getElementById('sPath').textContent=path.length;
+    document.getElementById('sStatus').textContent='Path found!';
+    document.getElementById('stepLog').innerHTML=`<span class="hl">Path found!</span><br>Visited: ${vc} cells<br>Path length: ${path.length}`;
+  } else {
+    document.getElementById('sStatus').textContent='No path!';
+    document.getElementById('stepLog').innerHTML='<span style="color:#ef4444">No path found.</span>';
+  }
+  document.getElementById('runBtn').disabled=false; mRun=false;
+}
+
+document.getElementById('runBtn').onclick=runAstar;
+document.getElementById('clearPathBtn').onclick=clearPath;
+document.getElementById('clearAllBtn').onclick=()=>{initMain();drawAll();clearPath();};
+document.getElementById('mazeBtn').onclick=()=>{
+  if(mRun)return; initMain();
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
+    if(mg[r][c]===E&&Math.random()<0.28)mg[r][c]=W;
+  mg[ms.r][ms.c]=S; mg[me.r][me.c]=EN; drawAll(); clearPath();
+};
+document.getElementById('speedSlider').oninput=function(){document.getElementById('speedLabel').textContent=this.value;};
+
+// ===== COMPARE =====
+const CC=28,CR=16,CCEL=16;
+const caA=document.getElementById('cmpA'),caB=document.getElementById('cmpB');
+const ctxA=caA.getContext('2d'),ctxB=caB.getContext('2d');
+caA.width=CC*CCEL; caA.height=CR*CCEL;
+caB.width=CC*CCEL; caB.height=CR*CCEL;
+let cg=[],cs={r:8,c:2},ce={r:8,c:25};
+
+function initCmp(){
+  cg=Array.from({length:CR},()=>Array(CC).fill(E));
+  cg[cs.r][cs.c]=S; cg[ce.r][ce.c]=EN;
+}
+function dcc(ctx,grid,r,c){
+  const x=c*CCEL,y=r*CCEL,v=grid[r][c];
+  ctx.fillStyle=CLR[v]; ctx.fillRect(x,y,CCEL,CCEL);
+  ctx.strokeStyle='rgba(0,229,255,0.07)'; ctx.lineWidth=0.5; ctx.strokeRect(x,y,CCEL,CCEL);
+  if(v===S||v===EN){
+    ctx.fillStyle=v===S?'#064e3b':'#7f1d1d';
+    ctx.font='bold 10px Rajdhani,sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(v===S?'S':'E',x+CCEL/2,y+CCEL/2);
+  }
+}
+function drawCAll(ctx,grid){for(let r=0;r<CR;r++)for(let c=0;c<CC;c++)dcc(ctx,grid,r,c);}
+function cnbrs(r,c){return[[0,1],[1,0],[0,-1],[-1,0]].map(([dr,dc])=>[r+dr,c+dc]).filter(([nr,nc])=>nr>=0&&nr<CR&&nc>=0&&nc<CC);}
+function cheur(r,c){return Math.abs(r-ce.r)+Math.abs(c-ce.c);}
+
+function cmpAstar(grid){
+  const gS=Array.from({length:CR},()=>Array(CC).fill(Infinity));
+  const prev={}; gS[cs.r][cs.c]=0;
+  const open=[[cheur(cs.r,cs.c),cs.r,cs.c]];
+  const closed=Array.from({length:CR},()=>Array(CC).fill(false));
+  const steps=[],path=[];let found=false,er,ec;
+  while(open.length){
+    open.sort((a,b)=>a[0]-b[0]);
+    const[,r,c]=open.shift();
+    if(closed[r][c])continue; closed[r][c]=true;
+    if(grid[r][c]===EN){found=true;er=r;ec=c;break;}
+    if(grid[r][c]!==S)steps.push([r,c,CL]);
+    for(const[nr,nc]of cnbrs(r,c)){
+      if(grid[nr][nc]===W||closed[nr][nc])continue;
+      const ng=gS[r][c]+1;
+      if(ng<gS[nr][nc]){
+        gS[nr][nc]=ng; prev[`${nr},${nc}`]=`${r},${c}`;
+        if(grid[nr][nc]!==EN)steps.push([nr,nc,OP]);
+        open.push([ng+cheur(nr,nc),nr,nc]);
+      }
+    }
+  }
+  if(found){let cur=`${er},${ec}`;while(prev[cur]){const[pr,pc]=prev[cur].split(',').map(Number);path.unshift([pr,pc]);cur=prev[cur];}}
+  return{steps,path};
+}
+function cmpBFS(grid){
+  const vis=Array.from({length:CR},()=>Array(CC).fill(false));
+  const prev={},queue=[[cs.r,cs.c]];vis[cs.r][cs.c]=true;
+  const steps=[],path=[];let found=false,er,ec;
+  while(queue.length){
+    const[r,c]=queue.shift();
+    if(grid[r][c]===EN){found=true;er=r;ec=c;break;}
+    if(grid[r][c]!==S)steps.push([r,c,CL]);
+    for(const[nr,nc]of cnbrs(r,c)){
+      if(vis[nr][nc]||grid[nr][nc]===W)continue;
+      vis[nr][nc]=true; prev[`${nr},${nc}`]=`${r},${c}`;
+      if(grid[nr][nc]!==EN)steps.push([nr,nc,OP]);
+      queue.push([nr,nc]);
+    }
+  }
+  if(found){let cur=`${er},${ec}`;while(prev[cur]){const[pr,pc]=prev[cur].split(',').map(Number);path.unshift([pr,pc]);cur=prev[cur];}}
+  return{steps,path};
+}
+
+let cmpRun=false;
+async function runBoth(){
+  if(cmpRun)return; cmpRun=true;
+  const gA=cg.map(r=>[...r]),gB=cg.map(r=>[...r]);
+  const rA=cmpAstar(gA),rB=cmpBFS(gB);
+  const delay=ms=>new Promise(res=>setTimeout(res,ms));
+  const maxS=Math.max(rA.steps.length,rB.steps.length);
+  for(let i=0;i<maxS;i++){
+    if(i<rA.steps.length){const[r,c,t]=rA.steps[i];if(gA[r][c]!==S&&gA[r][c]!==EN){gA[r][c]=t;dcc(ctxA,gA,r,c);}}
+    if(i<rB.steps.length){const[r,c,t]=rB.steps[i];if(gB[r][c]!==S&&gB[r][c]!==EN){gB[r][c]=t;dcc(ctxB,gB,r,c);}}
+    document.getElementById('cmpAV').textContent=Math.min(i+1,rA.steps.length);
+    document.getElementById('cmpBV').textContent=Math.min(i+1,rB.steps.length);
+    await delay(20);
+  }
+  for(let i=0;i<Math.max(rA.path.length,rB.path.length);i++){
+    if(i<rA.path.length){const[r,c]=rA.path[i];gA[r][c]=PT;dcc(ctxA,gA,r,c);}
+    if(i<rB.path.length){const[r,c]=rB.path[i];gB[r][c]=PT;dcc(ctxB,gB,r,c);}
+    await delay(35);
+  }
+  document.getElementById('cmpAP').textContent=rA.path.length||'None';
+  document.getElementById('cmpBP').textContent=rB.path.length||'None';
+  cmpRun=false;
+}
+
+function resetCmp(){
+  initCmp();drawCAll(ctxA,cg);drawCAll(ctxB,cg);
+  ['cmpAV','cmpBV','cmpAP','cmpBP'].forEach(id=>document.getElementById(id).textContent='—');
+}
+
+document.getElementById('runBothBtn').onclick=runBoth;
+document.getElementById('resetBothBtn').onclick=resetCmp;
+document.getElementById('mazeBothBtn').onclick=()=>{
+  initCmp();
+  for(let r=0;r<CR;r++)for(let c=0;c<CC;c++)
+    if(cg[r][c]===E&&Math.random()<0.27)cg[r][c]=W;
+  cg[cs.r][cs.c]=S; cg[ce.r][ce.c]=EN;
+  drawCAll(ctxA,cg); drawCAll(ctxB,cg);
+  ['cmpAV','cmpBV','cmpAP','cmpBP'].forEach(id=>document.getElementById(id).textContent='—');
+};
+
+// INIT
+initMain(); resizeMain();
+initCmp(); drawCAll(ctxA,cg); drawCAll(ctxB,cg);
+window.addEventListener('resize',resizeMain);
+</script>
+</body>
+</html>
