@@ -531,6 +531,9 @@ document.getElementById('mazeBothBtn').onclick=()=>{
 initMain(); resizeMain();
 initCmp(); drawCAll(ctxA,cg); drawCAll(ctxB,cg);
 window.addEventListener('resize',resizeMain);
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
 </script>
 </body>
 </html>
